@@ -3,12 +3,11 @@ package com.duox.cobblemonutils.config;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import dev.isxander.yacl3.api.*;
 import dev.isxander.yacl3.api.controller.BooleanControllerBuilder;
-import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
 import dev.isxander.yacl3.api.controller.DropdownStringControllerBuilder;
+import dev.isxander.yacl3.api.controller.IntegerFieldControllerBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,9 +15,11 @@ import java.util.TreeSet;
 
 public class ConfigScreen {
 
+    private static List<String> cachedSpecies = null;
+
     public Screen createConfigScreen(Screen parent) {
         Config config = ConfigManager.getConfig();
-        List<String> speciesValues = speciesValues();
+        List<String> speciesValues = getSpeciesValues();
 
         return YetAnotherConfigLib.createBuilder()
                 .title(Component.literal("CobblemonUtils"))
@@ -40,10 +41,10 @@ public class ConfigScreen {
                                 .binding(true, () -> config.highlightShinies, (v) -> config.highlightShinies = v)
                                 .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
                                 .build())
-                        .option(Option.<Color>createBuilder()
-                                .name(Component.literal("Shiny Color"))
-                                .binding(new Color(-10496, true), () -> new Color(config.shinyColor, true), (v) -> config.shinyColor = v.getRGB())
-                                .controller(opt -> ColorControllerBuilder.create(opt).allowAlpha(true))
+                        .option(Option.<Boolean>createBuilder()
+                                .name(Component.literal("Highlight Legendaries"))
+                                .binding(true, () -> config.highlightLegendaries, (v) -> config.highlightLegendaries = v)
+                                .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
                                 .build())
                         .group(ListOption.<String>createBuilder()
                                 .name(Component.literal("Species Filter"))
@@ -69,18 +70,32 @@ public class ConfigScreen {
                                 .binding(true, () -> config.showCatchRate, (v) -> config.showCatchRate = v)
                                 .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
                                 .build())
+                        .option(Option.<Integer>createBuilder()
+                                .name(Component.literal("Overlay X Position"))
+                                .binding(10, () -> config.overlayX, (v) -> config.overlayX = v)
+                                .controller(IntegerFieldControllerBuilder::create)
+                                .build())
+                        .option(Option.<Integer>createBuilder()
+                                .name(Component.literal("Overlay Y Position"))
+                                .binding(10, () -> config.overlayY, (v) -> config.overlayY = v)
+                                .controller(IntegerFieldControllerBuilder::create)
+                                .build())
                         .build())
                 .save(ConfigManager::save)
                 .build()
                 .generateScreen(parent);
     }
 
-    private List<String> speciesValues() {
+    private List<String> getSpeciesValues() {
+        if (cachedSpecies != null) return cachedSpecies;
+
         try {
             TreeSet<String> sorted = new TreeSet<>();
             PokemonSpecies.INSTANCE.getImplemented().forEach((s) -> sorted.add(s.getName().toLowerCase()));
-            return new ArrayList<>(sorted);
-        } catch (Throwable var1) {
+            cachedSpecies = new ArrayList<>(sorted);
+            return cachedSpecies;
+        } catch (Exception e) {
+            e.printStackTrace();
             return Collections.emptyList();
         }
     }

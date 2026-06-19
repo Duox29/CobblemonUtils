@@ -23,10 +23,24 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class OverlayRenderer {
-    public static volatile int nextY = 10;
+    // Biến lưu trữ mục tiêu hiện tại, chỉ cập nhật mỗi Tick
+    private static Pokemon currentTarget = null;
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.level == null) return;
+
+        // Quét tìm Pokemon được thực hiện ở đây thay vì nhồi nhét vào Frame Render
+        ClientBattle battle = CobblemonClient.INSTANCE.getBattle();
+        currentTarget = resolveTarget(client, battle);
+    }
 
     @SubscribeEvent
     public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
@@ -38,56 +52,67 @@ public class OverlayRenderer {
     private static void render(GuiGraphics g) {
         Config config = ConfigManager.getConfig();
         Minecraft client = Minecraft.getInstance();
-        if (client.player != null && client.level != null) {
-            if (config.showOverworldInfo) {
-                ClientBattle battle = CobblemonClient.INSTANCE.getBattle();
-                Pokemon target = resolveTarget(client, battle);
-                if (target == null) {
-                    nextY = 10;
-                } else {
-                    int y = 10;
-                    String name = target.getSpecies().getName();
-                    int level = target.getLevel();
-                    boolean shiny = target.getShiny();
-                    String nameLine = (shiny ? "§e✨ " : "") + name + " §7Lv." + level;
-                    g.drawString(client.font, nameLine, 10, y, 16777215);
-                    y += 10;
 
-                    // FIX 1: Đổi getMaxHealth() thành getHp()
-                    String hpLine = "HP: " + target.getCurrentHealth() + " / " + target.getHp();
-                    g.drawString(client.font, hpLine, 10, y, 16777215);
-                    y += 10;
+        if (client.player == null || client.level == null || !config.showOverworldInfo || currentTarget == null) {
+            return;
+        }
 
-                    if (config.showIVs) {
-                        int hpIv = target.getIvs().getOrDefault(Stats.HP);
-                        int atkIv = target.getIvs().getOrDefault(Stats.ATTACK);
-                        int defIv = target.getIvs().getOrDefault(Stats.DEFENCE);
-                        int spaIv = target.getIvs().getOrDefault(Stats.SPECIAL_ATTACK);
-                        int spdIv = target.getIvs().getOrDefault(Stats.SPECIAL_DEFENCE);
-                        int speIv = target.getIvs().getOrDefault(Stats.SPEED);
-                        String ivLine = String.format("IVs: HP:%d A:%d D:%d SA:%d SD:%d S:%d", hpIv, atkIv, defIv, spaIv, spdIv, speIv);
-                        g.drawString(client.font, ivLine, 10, y, 11184810);
-                        y += 10;
-                    }
+        // Thay thế hardcode bằng biến từ config
+        int startX = config.overlayX;
+        int startY = config.overlayY;
 
-                    if (config.showCatchRate) {
-                        ItemStack held = client.player.getMainHandItem();
-                        if (!(held.getItem() instanceof PokeBallItem)) {
-                            held = client.player.getOffhandItem();
-                        }
+        startY = drawBasicInfo(g, client, currentTarget, startX, startY);
 
-                        Item info = held.getItem();
-                        if (info instanceof PokeBallItem ball) {
-                            CatchInfo catchInfo = calculateCatch(client.player, ball.getPokeBall(), target);
-                            String catchLine = String.format("%s → %.1f%% (≈%d shakes)", ball.getPokeBall().getName().getPath().replace('_', ' '), catchInfo.chancePercent, catchInfo.expectedShakes);
-                            int color = catchInfo.chancePercent >= 99.0F ? 16766720 : (catchInfo.chancePercent >= 50.0F ? '\uff00' : (catchInfo.chancePercent >= 20.0F ? 16777045 : 16733525));
-                            g.drawString(client.font, catchLine, 10, y, color);
-                            y += 10;
-                        }
-                    }
-                    nextY = y;
-                }
-            }
+        if (config.showIVs) {
+            startY = drawIVs(g, client, currentTarget, startX, startY);
+        }
+
+        if (config.showCatchRate) {
+            drawCatchRate(g, client, currentTarget, startX, startY);
+        }
+    }
+
+    private static int drawBasicInfo(GuiGraphics g, Minecraft client, Pokemon target, int x, int y) {
+        String name = target.getSpecies().getName();
+        int level = target.getLevel();
+        boolean shiny = target.getShiny();
+
+        String nameLine = (shiny ? "§e✨ " : "") + name + " §7Lv." + level;
+        g.drawString(client.font, nameLine, x, y, 16777215);
+        y += 10;
+
+        String hpLine = "HP: " + target.getCurrentHealth() + " / " + target.getHp();
+        g.drawString(client.font, hpLine, x, y, 16777215);
+        y += 10;
+
+        return y;
+    }
+
+    private static int drawIVs(GuiGraphics g, Minecraft client, Pokemon target, int x, int y) {
+        int hpIv = target.getIvs().getOrDefault(Stats.HP);
+        int atkIv = target.getIvs().getOrDefault(Stats.ATTACK);
+        int defIv = target.getIvs().getOrDefault(Stats.DEFENCE);
+        int spaIv = target.getIvs().getOrDefault(Stats.SPECIAL_ATTACK);
+        int spdIv = target.getIvs().getOrDefault(Stats.SPECIAL_DEFENCE);
+        int speIv = target.getIvs().getOrDefault(Stats.SPEED);
+
+        String ivLine = String.format("IVs: HP:%d A:%d D:%d SA:%d SD:%d S:%d", hpIv, atkIv, defIv, spaIv, spdIv, speIv);
+        g.drawString(client.font, ivLine, x, y, 11184810);
+        return y + 10;
+    }
+
+    private static void drawCatchRate(GuiGraphics g, Minecraft client, Pokemon target, int x, int y) {
+        ItemStack held = client.player.getMainHandItem();
+        if (!(held.getItem() instanceof PokeBallItem)) {
+            held = client.player.getOffhandItem();
+        }
+
+        Item info = held.getItem();
+        if (info instanceof PokeBallItem ball) {
+            CatchInfo catchInfo = calculateCatch(client.player, ball.getPokeBall(), target);
+            String catchLine = String.format("%s → %.1f%% (≈%d shakes)", ball.getPokeBall().getName().getPath().replace('_', ' '), catchInfo.chancePercent, catchInfo.expectedShakes);
+            int color = catchInfo.chancePercent >= 99.0F ? 16766720 : (catchInfo.chancePercent >= 50.0F ? '\uff00' : (catchInfo.chancePercent >= 20.0F ? 16777045 : 16733525));
+            g.drawString(client.font, catchLine, x, y, color);
         }
     }
 
@@ -107,14 +132,12 @@ public class OverlayRenderer {
         return null;
     }
 
-    // FIX 2 & 3: Xóa bỏ getWildActor() và chủ động duyệt Entity để tìm Pokémon hoang dã trong trận
     private static Pokemon findWildPokemonEntity(Minecraft client, ClientBattle battle) {
         if (battle == null || client.level == null) return null;
 
         for (Entity e : client.level.entitiesForRendering()) {
             if (e instanceof PokemonEntity pe) {
                 Pokemon pokemon = pe.getPokemon();
-                // Nếu Pokemon này thuộc trận đấu đang diễn ra VÀ KHÔNG có người sở hữu (hoang dã)
                 if (pe.getBattleId() != null && pe.getBattleId().equals(battle.getBattleId()) && !pokemon.isPlayerOwned()) {
                     return pokemon;
                 }
@@ -128,7 +151,6 @@ public class OverlayRenderer {
         if (modifier.isGuaranteed()) {
             return new CatchInfo(100.0F, 4);
         } else {
-            // FIX 1: Đổi getMaxHealth() thành getHp()
             int maxHp = pokemon.getHp();
             int curHp = pokemon.getCurrentHealth();
             float catchRate = (float) pokemon.getForm().getCatchRate();

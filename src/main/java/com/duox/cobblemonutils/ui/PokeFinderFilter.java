@@ -14,48 +14,44 @@ public class PokeFinderFilter {
     }
 
     public static int getHighlightColor(PokemonEntity pokemonEntity) {
+        Pokemon pokemon = pokemonEntity.getPokemon();
+
         Config config = ConfigManager.getConfig();
 
-        if (config.ignoreOwned && pokemonEntity.getPokemon().getOwnerUUID() != null) {
+        if (config.ignoreOwned && pokemon.isPlayerOwned()) {
             return 0;
-        } else {
-            int color = getHighlightColor(pokemonEntity.getPokemon());
-            if (color == 0) {
-                return 0;
-            } else {
-                return LineOfSight.isVisible(pokemonEntity) ? color : 0;
-            }
         }
+
+        return getHighlightColor(pokemon);
     }
 
     public static int getHighlightColor(Pokemon pokemon) {
         Config config = ConfigManager.getConfig();
-        if (!config.enablePokeFinder) {
-            return 0;
-        } else if (config.highlightShinies && pokemon.getShiny()) {
-            return config.shinyColor;
-        } else if (config.highlightLegendaries && pokemon.isLegendary()) {
-            return config.legendaryColor;
-        } else {
-            if (!config.specificSpecies.isEmpty()) {
-                String speciesName = pokemon.getSpecies().getName().toLowerCase();
+        if (!config.enablePokeFinder) return 0;
 
-                for (String s : config.specificSpecies) {
-                    if (s.trim().toLowerCase().equals(speciesName)) {
-                        return config.speciesColor;
-                    }
-                }
-            }
-
-            ToIntFunction<Pokemon> ext = extension;
-            if (ext != null) {
-                int extColor = ext.applyAsInt(pokemon);
-                if (extColor != 0) {
-                    return extColor;
-                }
-            }
-
-            return 0;
+        if (isPokemonShiny(pokemon)) {
+            return 0xFFD700;
         }
+
+        if (config.highlightLegendaries && pokemon.isLegendary()) {
+            return 0xFF00FF;
+        }
+
+        if (!config.specificSpecies.isEmpty()) {
+            String speciesName = pokemon.getSpecies().getName().toLowerCase();
+            for (String s : config.specificSpecies) {
+                if (s.trim().equalsIgnoreCase(speciesName)) {
+                    return 0x00FFFF;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private static boolean isPokemonShiny(Pokemon pokemon) {
+        if (pokemon.getShiny()) return true;
+
+        return pokemon.getAspects().contains("shiny");
     }
 }
