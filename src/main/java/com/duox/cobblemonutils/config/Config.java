@@ -10,10 +10,19 @@ public class Config {
     public boolean highlightLegendaries = true;
     public List<String> specificSpecies = new ArrayList<>();
 
+    public boolean enableNotifications = true;
+    public NotificationType notificationType = NotificationType.ACTION_BAR;
+
     public boolean showOverworldInfo = true;
     public boolean showIVs = true;
     public boolean showCatchRate = true;
 
     public int overlayX = 10;
     public int overlayY = 10;
+
+    public enum NotificationType {
+        CHAT,
+        ACTION_BAR,
+        TOAST
+    }
 }

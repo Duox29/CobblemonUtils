@@ -27,7 +27,6 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class OverlayRenderer {
-    // Biến lưu trữ mục tiêu hiện tại, chỉ cập nhật mỗi Tick
     private static Pokemon currentTarget = null;
 
     @SubscribeEvent
@@ -37,7 +36,6 @@ public class OverlayRenderer {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null) return;
 
-        // Quét tìm Pokemon được thực hiện ở đây thay vì nhồi nhét vào Frame Render
         ClientBattle battle = CobblemonClient.INSTANCE.getBattle();
         currentTarget = resolveTarget(client, battle);
     }
@@ -57,7 +55,6 @@ public class OverlayRenderer {
             return;
         }
 
-        // Thay thế hardcode bằng biến từ config
         int startX = config.overlayX;
         int startY = config.overlayY;
 

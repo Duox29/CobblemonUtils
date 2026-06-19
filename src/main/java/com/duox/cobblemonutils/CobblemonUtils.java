@@ -3,6 +3,7 @@ package com.duox.cobblemonutils;
 import com.duox.cobblemonutils.config.ConfigManager;
 import com.duox.cobblemonutils.config.KeybindManager;
 import com.duox.cobblemonutils.config.ConfigScreen;
+import com.duox.cobblemonutils.ui.NotificationManager;
 import com.duox.cobblemonutils.ui.OverlayRenderer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -22,18 +23,14 @@ public class CobblemonUtils {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
-            // Load cấu hình trước
             ConfigManager.load();
 
-            // Đăng ký các sự kiện khởi tạo của Forge Client
             modEventBus.addListener(this::clientSetup);
             modEventBus.addListener(KeybindManager::registerKeybindings);
 
-            // Đăng ký HUD Overlay vào sự kiện Forge Bus
             MinecraftForge.EVENT_BUS.register(OverlayRenderer.class);
             MinecraftForge.EVENT_BUS.register(KeybindManager.class);
-
-            // Tích hợp màn hình cấu hình vào Forge Mod List GUI thay cho ModMenu
+            MinecraftForge.EVENT_BUS.register(NotificationManager.class);
             ModLoadingContext.get().registerExtensionPoint(
                     ConfigScreenHandler.ConfigScreenFactory.class,
                     () -> new ConfigScreenHandler.ConfigScreenFactory(

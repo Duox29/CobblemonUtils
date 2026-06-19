@@ -5,6 +5,7 @@ import dev.isxander.yacl3.api.*;
 import dev.isxander.yacl3.api.controller.BooleanControllerBuilder;
 import dev.isxander.yacl3.api.controller.DropdownStringControllerBuilder;
 import dev.isxander.yacl3.api.controller.IntegerFieldControllerBuilder;
+import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -30,6 +31,18 @@ public class ConfigScreen {
                                 .name(Component.literal("Enable PokeFinder"))
                                 .binding(true, () -> config.enablePokeFinder, (v) -> config.enablePokeFinder = v)
                                 .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
+                                .build())
+                        .option(Option.<Boolean>createBuilder()
+                                .name(Component.literal("Enable Notifications"))
+                                .description(OptionDescription.of(Component.literal("Hiển thị thông báo khi tìm thấy mục tiêu.")))
+                                .binding(true, () -> config.enableNotifications, (v) -> config.enableNotifications = v)
+                                .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
+                                .build())
+                        .option(Option.<Config.NotificationType>createBuilder()
+                                .name(Component.literal("Notification Style"))
+                                .description(OptionDescription.of(Component.literal("Chọn vị trí hiển thị thông báo.")))
+                                .binding(Config.NotificationType.ACTION_BAR, () -> config.notificationType, (v) -> config.notificationType = v)
+                                .controller(opt -> EnumControllerBuilder.<Config.NotificationType>create(opt).enumClass(Config.NotificationType.class))
                                 .build())
                         .option(Option.<Boolean>createBuilder()
                                 .name(Component.literal("Ignore Owned Pokémon"))
