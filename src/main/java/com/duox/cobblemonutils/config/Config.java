@@ -24,6 +24,7 @@ public class Config {
     // Overlay
     public boolean showOverworldInfo = true;
     public boolean showIVs = true;
+    public boolean showTypes = true;
     public boolean showCatchRate = true;
     public int overlayX = 10;
     public int overlayY = 10;

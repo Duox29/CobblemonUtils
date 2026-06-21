@@ -21,7 +21,7 @@ public abstract class EntityMixin {
     private void cobblemonutils$injectIsCurrentlyGlowing(CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof PokemonEntity pokemonEntity) {
             Config config = ConfigManager.getConfig();
-            if (config.enableGlowing) { // Chỉ phát sáng viền nếu config cho phép
+            if (config.enableGlowing) {
                 int color = PokeFinderFilter.getHighlightColor(pokemonEntity);
                 if (color != 0) {
                     cir.setReturnValue(true);

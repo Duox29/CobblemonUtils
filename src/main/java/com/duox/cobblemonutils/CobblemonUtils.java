@@ -32,7 +32,7 @@ public class CobblemonUtils {
             MinecraftForge.EVENT_BUS.register(OverlayRenderer.class);
             MinecraftForge.EVENT_BUS.register(KeybindManager.class);
             MinecraftForge.EVENT_BUS.register(NotificationManager.class);
-            MinecraftForge.EVENT_BUS.register(PokeFinderRenderer.class); // Đăng ký Renderer mới
+            MinecraftForge.EVENT_BUS.register(PokeFinderRenderer.class);
 
             ModLoadingContext.get().registerExtensionPoint(
                     ConfigScreenHandler.ConfigScreenFactory.class,
