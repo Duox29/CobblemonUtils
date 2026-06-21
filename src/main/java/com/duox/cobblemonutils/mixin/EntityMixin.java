@@ -1,5 +1,7 @@
 package com.duox.cobblemonutils.mixin;
 
+import com.duox.cobblemonutils.config.Config;
+import com.duox.cobblemonutils.config.ConfigManager;
 import com.duox.cobblemonutils.ui.PokeFinderFilter;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import net.minecraft.world.entity.Entity;
@@ -18,11 +20,13 @@ public abstract class EntityMixin {
     )
     private void cobblemonutils$injectIsCurrentlyGlowing(CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof PokemonEntity pokemonEntity) {
-            int color = PokeFinderFilter.getHighlightColor(pokemonEntity);
-            if (color != 0) {
-                cir.setReturnValue(true);
-            } else {
-                cir.setReturnValue(false);
+            Config config = ConfigManager.getConfig();
+            if (config.enableGlowing) { // Chỉ phát sáng viền nếu config cho phép
+                int color = PokeFinderFilter.getHighlightColor(pokemonEntity);
+                if (color != 0) {
+                    cir.setReturnValue(true);
+                    return;
+                }
             }
         }
     }
