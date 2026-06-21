@@ -4,18 +4,11 @@ import com.duox.cobblemonutils.config.Config;
 import com.duox.cobblemonutils.config.ConfigManager;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import java.util.function.ToIntFunction;
 
 public class PokeFinderFilter {
-    private static volatile ToIntFunction<Pokemon> extension;
-
-    public static void registerExtension(ToIntFunction<Pokemon> ext) {
-        extension = ext;
-    }
 
     public static int getHighlightColor(PokemonEntity pokemonEntity) {
         Pokemon pokemon = pokemonEntity.getPokemon();
-
         Config config = ConfigManager.getConfig();
 
         if (config.ignoreOwned && pokemon.isPlayerOwned()) {
@@ -50,8 +43,6 @@ public class PokeFinderFilter {
     }
 
     private static boolean isPokemonShiny(Pokemon pokemon) {
-        if (pokemon.getShiny()) return true;
-
-        return pokemon.getAspects().contains("shiny");
+        return pokemon.getShiny() || pokemon.getAspects().contains("shiny");
     }
 }

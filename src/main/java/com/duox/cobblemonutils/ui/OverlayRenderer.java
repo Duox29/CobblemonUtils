@@ -2,21 +2,17 @@ package com.duox.cobblemonutils.ui;
 
 import com.duox.cobblemonutils.config.Config;
 import com.duox.cobblemonutils.config.ConfigManager;
-import com.cobblemon.mod.common.api.pokeball.catching.CatchRateModifier;
+import com.duox.cobblemonutils.utils.CatchRateCalculator;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.client.CobblemonClient;
 import com.cobblemon.mod.common.client.battle.ClientBattle;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.item.PokeBallItem;
-import com.cobblemon.mod.common.pokeball.PokeBall;
 import com.cobblemon.mod.common.pokemon.Pokemon;
-import com.cobblemon.mod.common.pokemon.status.PersistentStatus;
-import com.cobblemon.mod.common.pokemon.status.PersistentStatusContainer;
-import com.cobblemon.mod.common.pokemon.status.statuses.persistent.*;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
@@ -28,6 +24,10 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class OverlayRenderer {
     private static Pokemon currentTarget = null;
+
+    // Màu sắc mặc định thay cho các số magic
+    private static final int COLOR_WHITE = 0xFFFFFF;
+    private static final int COLOR_GRAY = 0xAAAAAA;
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -55,17 +55,15 @@ public class OverlayRenderer {
             return;
         }
 
-        int startX = config.overlayX;
         int startY = config.overlayY;
-
-        startY = drawBasicInfo(g, client, currentTarget, startX, startY);
+        startY = drawBasicInfo(g, client, currentTarget, config.overlayX, startY);
 
         if (config.showIVs) {
-            startY = drawIVs(g, client, currentTarget, startX, startY);
+            startY = drawIVs(g, client, currentTarget, config.overlayX, startY);
         }
 
         if (config.showCatchRate) {
-            drawCatchRate(g, client, currentTarget, startX, startY);
+            drawCatchRate(g, client, currentTarget, config.overlayX, startY);
         }
     }
 
@@ -74,15 +72,14 @@ public class OverlayRenderer {
         int level = target.getLevel();
         boolean shiny = target.getShiny();
 
-        String nameLine = (shiny ? "§e✨ " : "") + name + " §7Lv." + level;
-        g.drawString(client.font, nameLine, x, y, 16777215);
+        String nameLine = (shiny ? ChatFormatting.YELLOW + "✨ " : "") + ChatFormatting.WHITE + name + ChatFormatting.GRAY + " Lv." + level;
+        g.drawString(client.font, nameLine, x, y, COLOR_WHITE);
         y += 10;
 
         String hpLine = "HP: " + target.getCurrentHealth() + " / " + target.getHp();
-        g.drawString(client.font, hpLine, x, y, 16777215);
-        y += 10;
+        g.drawString(client.font, hpLine, x, y, COLOR_WHITE);
 
-        return y;
+        return y + 10;
     }
 
     private static int drawIVs(GuiGraphics g, Minecraft client, Pokemon target, int x, int y) {
@@ -94,7 +91,7 @@ public class OverlayRenderer {
         int speIv = target.getIvs().getOrDefault(Stats.SPEED);
 
         String ivLine = String.format("IVs: HP:%d A:%d D:%d SA:%d SD:%d S:%d", hpIv, atkIv, defIv, spaIv, spdIv, speIv);
-        g.drawString(client.font, ivLine, x, y, 11184810);
+        g.drawString(client.font, ivLine, x, y, COLOR_GRAY);
         return y + 10;
     }
 
@@ -106,11 +103,20 @@ public class OverlayRenderer {
 
         Item info = held.getItem();
         if (info instanceof PokeBallItem ball) {
-            CatchInfo catchInfo = calculateCatch(client.player, ball.getPokeBall(), target);
-            String catchLine = String.format("%s → %.1f%% (≈%d shakes)", ball.getPokeBall().getName().getPath().replace('_', ' '), catchInfo.chancePercent, catchInfo.expectedShakes);
-            int color = catchInfo.chancePercent >= 99.0F ? 16766720 : (catchInfo.chancePercent >= 50.0F ? '\uff00' : (catchInfo.chancePercent >= 20.0F ? 16777045 : 16733525));
+            CatchRateCalculator.CatchInfo catchInfo = CatchRateCalculator.calculateCatch(client.player, ball.getPokeBall(), target);
+            String ballName = ball.getPokeBall().getName().getPath().replace('_', ' ');
+            String catchLine = String.format("%s → %.1f%% (≈%d shakes)", ballName, catchInfo.chancePercent(), catchInfo.expectedShakes());
+
+            int color = getCatchRateColor(catchInfo.chancePercent());
             g.drawString(client.font, catchLine, x, y, color);
         }
+    }
+
+    private static int getCatchRateColor(float chancePercent) {
+        if (chancePercent >= 99.0F) return 0xFFDD00; // Gold
+        if (chancePercent >= 50.0F) return 0x00FF00; // Green
+        if (chancePercent >= 20.0F) return 0xFFAA00; // Orange
+        return 0xFF5555; // Red
     }
 
     private static Pokemon resolveTarget(Minecraft client, ClientBattle battle) {
@@ -120,11 +126,8 @@ public class OverlayRenderer {
         }
 
         HitResult hit = client.hitResult;
-        if (hit instanceof EntityHitResult entityHit) {
-            Entity entity = entityHit.getEntity();
-            if (entity instanceof PokemonEntity pokemonEntity) {
-                return pokemonEntity.getPokemon();
-            }
+        if (hit instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof PokemonEntity pokemonEntity) {
+            return pokemonEntity.getPokemon();
         }
         return null;
     }
@@ -142,56 +145,4 @@ public class OverlayRenderer {
         }
         return null;
     }
-
-    private static CatchInfo calculateCatch(Player thrower, PokeBall ball, Pokemon pokemon) {
-        CatchRateModifier modifier = ball.getCatchRateModifier();
-        if (modifier.isGuaranteed()) {
-            return new CatchInfo(100.0F, 4);
-        } else {
-            int maxHp = pokemon.getHp();
-            int curHp = pokemon.getCurrentHealth();
-            float catchRate = (float) pokemon.getForm().getCatchRate();
-            float inBattleMod = pokemon.getEntity() != null && pokemon.getEntity().getBattleId() != null ? 1.0F : 0.5F;
-            boolean valid = modifier.isValid(thrower, pokemon);
-            float ballBonus = valid ? modifier.value(thrower, pokemon) : 1.0F;
-            float bonusStatus = 1.0F;
-            PersistentStatusContainer statusContainer = pokemon.getStatus();
-            if (statusContainer != null) {
-                PersistentStatus s = statusContainer.getStatus();
-                if (!(s instanceof SleepStatus) && !(s instanceof FrozenStatus)) {
-                    if (s instanceof ParalysisStatus || s instanceof BurnStatus || s instanceof PoisonStatus || s instanceof PoisonBadlyStatus) {
-                        bonusStatus = 1.5F;
-                    }
-                } else {
-                    bonusStatus = 2.5F;
-                }
-            }
-
-            int bonusLevel = pokemon.getLevel() < 13 ? Math.max((36 - 2 * pokemon.getLevel()) / 10, 1) : 1;
-            float darkGrass = 1.0F;
-            float base = (3.0F * (float) maxHp - 2.0F * (float) curHp) * darkGrass * catchRate * inBattleMod;
-            float modified = applyBehavior(modifier.behavior(thrower, pokemon), base, ballBonus) / (3.0F * (float) maxHp);
-            modified *= bonusStatus * (float) bonusLevel;
-            if (modified >= 255.0F) {
-                return new CatchInfo(100.0F, 4);
-            } else {
-                double shakeProb = 65536.0F / Math.pow(255.0F / modified, 0.1875F);
-                double perShake = Math.min(1.0F, Math.max(0.0F, shakeProb / 65536.0F));
-                double capture = Math.pow(perShake, 4.0F);
-                int expected = (int) Math.round(perShake * 4.0F);
-                return new CatchInfo((float) (capture * 100.0F), expected);
-            }
-        }
-    }
-
-    private static float applyBehavior(CatchRateModifier.Behavior behavior, float input, float value) {
-        return switch (behavior) {
-            case ADD -> input + value;
-            case SUBTRACT -> input - value;
-            case MULTIPLY -> input * value;
-            case DIVIDE -> value == 0.0F ? input : input / value;
-        };
-    }
-
-    private record CatchInfo(float chancePercent, int expectedShakes) {}
 }

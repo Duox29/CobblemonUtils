@@ -4,9 +4,11 @@ import com.duox.cobblemonutils.config.Config;
 import com.duox.cobblemonutils.config.ConfigManager;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Pokemon;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -73,15 +75,18 @@ public class NotificationManager {
 
         String name = pokemon.getSpecies().getName();
         int level = pokemon.getLevel();
-        int x = entity.getBlockX();
-        int y = entity.getBlockY();
-        int z = entity.getBlockZ();
 
-        Component title = Component.literal("§6★ PokeFinder ★");
-        Component message = Component.literal(String.format("§e%s §f%s (Lv.%d) §7at [%d, %d, %d]", reason, name, level, x, y, z));
+        MutableComponent title = Component.literal("★ PokeFinder ★").withStyle(ChatFormatting.GOLD);
+
+        MutableComponent message = Component.literal(reason + " ")
+                .withStyle(ChatFormatting.YELLOW)
+                .append(Component.literal(name + " (Lv." + level + ") ").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(String.format("at [%d, %d, %d]", entity.getBlockX(), entity.getBlockY(), entity.getBlockZ())).withStyle(ChatFormatting.GRAY));
+
         switch (type) {
             case CHAT:
-                client.player.sendSystemMessage(Component.literal("§8[§6PokeFinder§8] ").append(message));
+                Component prefix = Component.literal("[PokeFinder] ").withStyle(ChatFormatting.GOLD);
+                client.player.sendSystemMessage(prefix.copy().append(message));
                 break;
             case ACTION_BAR:
                 client.player.displayClientMessage(message, true);
