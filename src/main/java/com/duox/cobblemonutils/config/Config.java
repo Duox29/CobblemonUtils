@@ -19,14 +19,14 @@ public class Config {
 
     // Notifications
     public boolean enableNotifications = true;
-    public NotificationType notificationType = NotificationType.ACTION_BAR;
+    public NotificationType notificationType = NotificationType.CHAT;
 
     // Overlay
     public boolean showOverworldInfo = true;
     public boolean showIVs = true;
     public boolean showTypes = true;
     public boolean showCatchRate = true;
-    public int overlayX = 10;
+    public int overlayX = 100;
     public int overlayY = 10;
 
     public enum NotificationType {

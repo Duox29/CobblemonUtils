@@ -24,11 +24,7 @@ public class ConfigScreen {
 
         return YetAnotherConfigLib.createBuilder()
                 .title(Component.literal("CobblemonUtils"))
-
-                // ============================================================
                 // CATEGORY 1 — GENERAL
-                // Master switch + how the mod talks to you.
-                // ============================================================
                 .category(ConfigCategory.createBuilder()
                         .name(Component.literal("General"))
                         .tooltip(Component.literal("Master switch and notification settings."))
@@ -58,10 +54,7 @@ public class ConfigScreen {
                                 .build())
                         .build())
 
-                // ============================================================
                 // CATEGORY 2 — INDICATORS
-                // The visual ways a wild Pokémon gets pointed out to you.
-                // ============================================================
                 .category(ConfigCategory.createBuilder()
                         .name(Component.literal("Indicators"))
                         .tooltip(Component.literal("Choose how wild Pokémon are visually highlighted."))
@@ -88,10 +81,7 @@ public class ConfigScreen {
                                 .build())
                         .build())
 
-                // ============================================================
                 // CATEGORY 3 — FILTERS
-                // What counts as "worth highlighting".
-                // ============================================================
                 .category(ConfigCategory.createBuilder()
                         .name(Component.literal("Filters"))
                         .tooltip(Component.literal("Decide which Pokémon actually trigger a highlight."))
@@ -125,10 +115,7 @@ public class ConfigScreen {
                                 .build())
                         .build())
 
-                // ============================================================
                 // CATEGORY 4 — OVERLAY (HUD)
-                // What's drawn on screen and where.
-                // ============================================================
                 .category(ConfigCategory.createBuilder()
                         .name(Component.literal("Overlay"))
                         .tooltip(Component.literal("Heads-up display shown over detected Pokémon."))
@@ -136,7 +123,7 @@ public class ConfigScreen {
                         .group(OptionGroup.createBuilder()
                                 .name(Component.literal("Display Info"))
                                 .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Show Overworld Info"))
+                                        .name(Component.literal("Show Pokemon Info"))
                                         .binding(true, () -> config.showOverworldInfo, (v) -> config.showOverworldInfo = v)
                                         .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
                                         .build())

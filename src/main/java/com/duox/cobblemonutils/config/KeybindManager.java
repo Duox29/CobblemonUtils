@@ -11,7 +11,7 @@ public class KeybindManager {
     private static KeyMapping configKey;
 
     public static void registerKeybindings(RegisterKeyMappingsEvent event) {
-        configKey = new KeyMapping("key.cobblemonutils.config", InputConstants.Type.KEYSYM, 85, "category.cobblemonutils.keys");
+        configKey = new KeyMapping("key.cobblemonutils.config", InputConstants.Type.KEYSYM, 67, "category.cobblemonutils.keys");
         event.register(configKey);
     }
 
