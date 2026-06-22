@@ -44,29 +44,11 @@ public class NotificationManager {
         UUID uuid = entity.getUUID();
         if (notifiedEntities.contains(uuid)) return;
 
-        String reason = getMatchReason(pokemon, config);
+        String reason = PokeFinderFilter.getMatchReason(pokemon, config);
         if (reason != null) {
             notifiedEntities.add(uuid);
             sendNotification(entity, pokemon, reason, config.notificationType);
         }
-    }
-
-    private static String getMatchReason(Pokemon pokemon, Config config) {
-        if (pokemon.getShiny() || pokemon.getAspects().contains("shiny")) {
-            return "Shiny";
-        }
-        if (config.highlightLegendaries && pokemon.isLegendary()) {
-            return "Legendary";
-        }
-        if (!config.specificSpecies.isEmpty()) {
-            String speciesName = pokemon.getSpecies().getName().toLowerCase();
-            for (String s : config.specificSpecies) {
-                if (s.trim().equalsIgnoreCase(speciesName)) {
-                    return "Target";
-                }
-            }
-        }
-        return null;
     }
 
     private static void sendNotification(PokemonEntity entity, Pokemon pokemon, String reason, Config.NotificationType type) {

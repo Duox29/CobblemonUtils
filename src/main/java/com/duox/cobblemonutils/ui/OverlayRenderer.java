@@ -1,5 +1,6 @@
 package com.duox.cobblemonutils.ui;
 
+import com.duox.cobblemonutils.CobblemonUtils;
 import com.duox.cobblemonutils.config.Config;
 import com.duox.cobblemonutils.config.ConfigManager;
 import com.duox.cobblemonutils.utils.CatchRateCalculator;
@@ -26,6 +27,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class OverlayRenderer {
     private static Pokemon currentTarget = null;
@@ -116,15 +118,17 @@ public class OverlayRenderer {
         if (config.showTypes) {
             ElementalType type1 = currentTarget.getPrimaryType();
             ElementalType type2 = currentTarget.getSecondaryType();
-            int id1 = getTypeId(type1.getName().toUpperCase());
-            int id2 = (type2 != null) ? getTypeId(type2.getName().toUpperCase()) : -1;
+            int id1 = getTypeId(type1.getName().toUpperCase(Locale.ROOT));
+            int id2 = (type2 != null) ? getTypeId(type2.getName().toUpperCase(Locale.ROOT)) : -1;
 
-            for (int i = 0; i < 18; i++) {
-                double dmg = TYPE_CHART[i][id1];
-                if (id2 != -1) dmg *= TYPE_CHART[i][id2];
+            if (id1 != -1) {
+                for (int i = 0; i < 18; i++) {
+                    double dmg = TYPE_CHART[i][id1];
+                    if (id2 != -1) dmg *= TYPE_CHART[i][id2];
 
-                if (dmg == 4.0) w4x.add(TYPE_DATA[i]);
-                else if (dmg == 2.0) w2x.add(TYPE_DATA[i]);
+                    if (dmg == 4.0) w4x.add(TYPE_DATA[i]);
+                    else if (dmg == 2.0) w2x.add(TYPE_DATA[i]);
+                }
             }
         }
 
@@ -197,7 +201,7 @@ public class OverlayRenderer {
     private static int drawHPBar(GuiGraphics g, Font font, Pokemon target, int x, int y, int width) {
         int maxHp = target.getHp();
         int curHp = target.getCurrentHealth();
-        float hpPercent = Math.max(0.0f, Math.min(1.0f, (float) curHp / maxHp));
+        float hpPercent = maxHp <= 0 ? 0.0f : Math.max(0.0f, Math.min(1.0f, (float) curHp / maxHp));
 
         g.drawString(font, "HP: " + curHp + "/" + maxHp, x, y, COLOR_TEXT_SUB);
 
@@ -224,15 +228,16 @@ public class OverlayRenderer {
         int currentX = x + font.width("Type: ");
         int imgYOffset = y - 2;
 
-        int id1 = getTypeId(type1.getName().toUpperCase());
+        int id1 = getTypeId(type1.getName().toUpperCase(Locale.ROOT));
+        if (id1 == -1) return y;
         g.blit(TYPE_DATA[id1].icon(), currentX, imgYOffset, 0, 0, iconSize, iconSize, iconSize, iconSize);
         currentX += iconSpacing;
 
         if (type2 != null && !type2.getName().equals(type1.getName())) {
             g.drawString(font, "/", currentX, y, COLOR_TEXT_SUB);
             currentX += font.width("/") + 2;
-            int id2 = getTypeId(type2.getName().toUpperCase());
-            g.blit(TYPE_DATA[id2].icon(), currentX, imgYOffset, 0, 0, iconSize, iconSize, iconSize, iconSize);
+            int id2 = getTypeId(type2.getName().toUpperCase(Locale.ROOT));
+            if (id2 != -1) g.blit(TYPE_DATA[id2].icon(), currentX, imgYOffset, 0, 0, iconSize, iconSize, iconSize, iconSize);
         }
 
         // --- Render Weakness ---
@@ -273,7 +278,7 @@ public class OverlayRenderer {
         for (int i = 0; i < TYPE_DATA.length; i++) {
             if (TYPE_DATA[i].name().equals(name)) return i;
         }
-        return 0;
+        return -1;
     }
 
     private static int drawStatsGrid(GuiGraphics g, Font font, String title, int hp, int atk, int def, int spa, int spd, int spe, int x, int y, int width) {
@@ -362,7 +367,7 @@ public class OverlayRenderer {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                CobblemonUtils.LOGGER.error("Failed to resolve party Pokémon target", e);
             }
         }
 

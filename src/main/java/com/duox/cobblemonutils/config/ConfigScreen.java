@@ -1,6 +1,7 @@
 package com.duox.cobblemonutils.config;
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
+import com.duox.cobblemonutils.CobblemonUtils;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -33,7 +34,7 @@ public class ConfigScreen {
             cachedSpecies = new ArrayList<>(sorted);
             return cachedSpecies;
         } catch (Exception e) {
-            e.printStackTrace();
+            CobblemonUtils.LOGGER.error("Failed to load Cobblemon species list", e);
             return Collections.emptyList();
         }
     }
@@ -55,6 +56,7 @@ public class ConfigScreen {
         private int controlW;
         private int speciesY;
         private int selectedSpeciesY;
+        private int selectedSpeciesScroll;
 
         NativeConfigScreen(Screen parent, List<String> speciesValues) {
             super(Component.literal("CobblemonUtils"));
@@ -75,21 +77,21 @@ public class ConfigScreen {
             rightControlX = rightX + labelW + 12;
 
             int y = START_Y;
-            addBool(leftControlX, "Enable PokeFinder", "Master switch. Disable mod without losing settings.", y, () -> config.enablePokeFinder, v -> config.enablePokeFinder = v); y += ROW_H;
-            addBool(leftControlX, "Enable Notifications", "Show notifications for matching Pokémon.", y, () -> config.enableNotifications, v -> config.enableNotifications = v); y += ROW_H;
-            addEnum(leftControlX, "Notification Style", "Where notifications appear.", y); y += ROW_H + 6;
+            addBool(leftControlX, "Master switch. Disable mod without losing settings.", y, () -> config.enablePokeFinder, v -> config.enablePokeFinder = v); y += ROW_H;
+            addBool(leftControlX, "Show notifications for matching Pokémon.", y, () -> config.enableNotifications, v -> config.enableNotifications = v); y += ROW_H;
+            addEnum(leftControlX, "Where notifications appear.", y); y += ROW_H + 6;
 
-            addBool(leftControlX, "Outline (Glowing)", "Glow around matching Pokémon.", y, () -> config.enableGlowing, v -> config.enableGlowing = v); y += ROW_H;
-            addBool(leftControlX, "Trace Ray", "Line from player to matching Pokémon.", y, () -> config.enableTraceRay, v -> config.enableTraceRay = v); y += ROW_H;
-            addBool(leftControlX, "Beacon Beam", "Vertical beam over matching Pokémon.", y, () -> config.enableBeaconBeam, v -> config.enableBeaconBeam = v); y += ROW_H + 6;
+            addBool(leftControlX, "Glow around matching Pokémon.", y, () -> config.enableGlowing, v -> config.enableGlowing = v); y += ROW_H;
+            addBool(leftControlX, "Line from player to matching Pokémon.", y, () -> config.enableTraceRay, v -> config.enableTraceRay = v); y += ROW_H;
+            addBool(leftControlX, "Vertical beam over matching Pokémon.", y, () -> config.enableBeaconBeam, v -> config.enableBeaconBeam = v); y += ROW_H + 6;
 
-            addBool(leftControlX, "Skip Owned Pokémon", "Ignore species already owned.", y, () -> config.ignoreOwned, v -> config.ignoreOwned = v); y += ROW_H;
-            addBool(leftControlX, "Find Shinies", "Highlight shiny Pokémon.", y, () -> config.highlightShinies, v -> config.highlightShinies = v); y += ROW_H;
-            addBool(leftControlX, "Find Legendaries", "Highlight legendary Pokémon.", y, () -> config.highlightLegendaries, v -> config.highlightLegendaries = v); y += ROW_H + 6;
+            addBool(leftControlX, "Ignore species already owned.", y, () -> config.ignoreOwned, v -> config.ignoreOwned = v); y += ROW_H;
+            addBool(leftControlX, "Highlight shiny Pokémon.", y, () -> config.highlightShinies, v -> config.highlightShinies = v); y += ROW_H;
+            addBool(leftControlX, "Highlight legendary Pokémon.", y, () -> config.highlightLegendaries, v -> config.highlightLegendaries = v); y += ROW_H + 6;
 
-            addBool(leftControlX, "Show Pokemon Info", "Show overlay info for matching Pokémon.", y, () -> config.showOverworldInfo, v -> config.showOverworldInfo = v); y += ROW_H;
-            addBool(leftControlX, "Show IVs", "Show IV values in overlay.", y, () -> config.showIVs, v -> config.showIVs = v); y += ROW_H;
-            addBool(leftControlX, "Show Catch Rate", "Show catch chance in overlay.", y, () -> config.showCatchRate, v -> config.showCatchRate = v); y += ROW_H;
+            addBool(leftControlX, "Show overlay info for matching Pokémon.", y, () -> config.showOverworldInfo, v -> config.showOverworldInfo = v); y += ROW_H;
+            addBool(leftControlX, "Show IV values in overlay.", y, () -> config.showIVs, v -> config.showIVs = v); y += ROW_H;
+            addBool(leftControlX, "Show catch chance in overlay.", y, () -> config.showCatchRate, v -> config.showCatchRate = v); y += ROW_H;
             addInt(leftControlX, "Overlay X Position", "Overlay X offset from left.", y, () -> config.overlayX, v -> config.overlayX = v, 0, 2000); y += ROW_H;
             addInt(leftControlX, "Overlay Y Position", "Overlay Y offset from top.", y, () -> config.overlayY, v -> config.overlayY = v, 0, 1000);
 
@@ -97,19 +99,21 @@ public class ConfigScreen {
             addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(this.width - 84, this.height - 28, 60, 20).build());
         }
 
-        private void addBool(int x, String label, String tooltip, int y, Supplier<Boolean> get, Consumer<Boolean> set) {
+        private void addBool(int x, String tooltip, int y, Supplier<Boolean> get, Consumer<Boolean> set) {
             Button button = Button.builder(Component.literal(get.get() ? "On" : "Off"), b -> {
                 set.accept(!get.get());
+                ConfigManager.save();
                 b.setMessage(Component.literal(get.get() ? "On" : "Off"));
             }).bounds(x, y, controlW, 20).build();
             button.setTooltip(Tooltip.create(Component.literal(tooltip)));
             addRenderableWidget(button);
         }
 
-        private void addEnum(int x, String label, String tooltip, int y) {
+        private void addEnum(int x, String tooltip, int y) {
             Button button = Button.builder(Component.literal(config.notificationType.name()), b -> {
                 Config.NotificationType[] values = Config.NotificationType.values();
                 config.notificationType = values[(config.notificationType.ordinal() + 1) % values.length];
+                ConfigManager.save();
                 b.setMessage(Component.literal(config.notificationType.name()));
             }).bounds(x, y, controlW, 20).build();
             button.setTooltip(Tooltip.create(Component.literal(tooltip)));
@@ -122,6 +126,7 @@ public class ConfigScreen {
             box.setResponder(s -> {
                 try {
                     set.accept(Math.max(min, Math.min(max, Integer.parseInt(s))));
+                    ConfigManager.save();
                 } catch (NumberFormatException ignored) {
                 }
             });
@@ -155,16 +160,18 @@ public class ConfigScreen {
 
             selectedSpeciesY = y + ROW_H * (shown + 2);
             int maxRows = Math.max(1, (this.height - selectedSpeciesY - 70) / ROW_H);
-            for (int i = 0; i < Math.min(maxRows, config.specificSpecies.size()); i++) {
-                final int index = i;
+            selectedSpeciesScroll = Math.max(0, Math.min(selectedSpeciesScroll, Math.max(0, config.specificSpecies.size() - maxRows)));
+            for (int i = 0; i < Math.min(maxRows, config.specificSpecies.size() - selectedSpeciesScroll); i++) {
+                final int index = i + selectedSpeciesScroll;
                 int rowY = selectedSpeciesY + ROW_H * i;
-                Button item = Button.builder(Component.literal(config.specificSpecies.get(i)), b -> {}).bounds(rightControlX, rowY, controlW - removeW - 6, 20).build();
-                item.setTooltip(Tooltip.create(Component.literal(config.specificSpecies.get(i))));
+                Button item = Button.builder(Component.literal(config.specificSpecies.get(index)), b -> {}).bounds(rightControlX, rowY, controlW - removeW - 6, 20).build();
+                item.setTooltip(Tooltip.create(Component.literal(config.specificSpecies.get(index))));
                 addRenderableWidget(item);
 
                 Button remove = Button.builder(Component.literal("×"), b -> {
                     if (index < config.specificSpecies.size()) {
                         config.specificSpecies.remove(index);
+                        ConfigManager.save();
                         refreshWidgets();
                     }
                 }).bounds(rightControlX + controlW - removeW, rowY, removeW, 20).build();
@@ -179,7 +186,10 @@ public class ConfigScreen {
 
         private void addSpeciesValue(String value) {
             if (value.isEmpty()) return;
-            if (!config.specificSpecies.contains(value)) config.specificSpecies.add(value);
+            if (!config.specificSpecies.contains(value)) {
+                config.specificSpecies.add(value);
+                ConfigManager.save();
+            }
             speciesPrefix = "";
             refreshWidgets();
         }
@@ -218,6 +228,16 @@ public class ConfigScreen {
             boolean handled = super.charTyped(codePoint, modifiers);
             if (speciesFocused && handled) refreshSpeciesBox();
             return handled;
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+            if (mouseX >= rightControlX && mouseX <= rightControlX + controlW && mouseY >= selectedSpeciesY) {
+                selectedSpeciesScroll = Math.max(0, selectedSpeciesScroll + (delta < 0 ? 1 : -1));
+                refreshWidgets();
+                return true;
+            }
+            return super.mouseScrolled(mouseX, mouseY, delta);
         }
 
         private String firstSpeciesMatch() {
