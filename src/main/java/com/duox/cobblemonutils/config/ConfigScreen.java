@@ -1,164 +1,27 @@
 package com.duox.cobblemonutils.config;
 
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
-import dev.isxander.yacl3.api.*;
-import dev.isxander.yacl3.api.controller.BooleanControllerBuilder;
-import dev.isxander.yacl3.api.controller.DropdownStringControllerBuilder;
-import dev.isxander.yacl3.api.controller.IntegerFieldControllerBuilder;
-import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.TreeSet;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ConfigScreen {
-
-    private static List<String> cachedSpecies = null;
+    private static List<String> cachedSpecies;
 
     public Screen createConfigScreen(Screen parent) {
-        Config config = ConfigManager.getConfig();
-        List<String> speciesValues = getSpeciesValues();
-
-        return YetAnotherConfigLib.createBuilder()
-                .title(Component.literal("CobblemonUtils"))
-                // CATEGORY 1 — GENERAL
-                .category(ConfigCategory.createBuilder()
-                        .name(Component.literal("General"))
-                        .tooltip(Component.literal("Master switch and notification settings."))
-
-                        .option(Option.<Boolean>createBuilder()
-                                .name(Component.literal("Enable PokeFinder"))
-                                .description(OptionDescription.of(Component.literal(
-                                        "Master switch. Turn this off to disable the whole mod without losing your other settings.")))
-                                .binding(true, () -> config.enablePokeFinder, (v) -> config.enablePokeFinder = v)
-                                .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                .build())
-
-                        .group(OptionGroup.createBuilder()
-                                .name(Component.literal("Notifications"))
-                                .description(OptionDescription.of(Component.literal(
-                                        "Get pinged when something worth catching shows up.")))
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Enable Notifications"))
-                                        .binding(true, () -> config.enableNotifications, (v) -> config.enableNotifications = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Config.NotificationType>createBuilder()
-                                        .name(Component.literal("Notification Style"))
-                                        .binding(Config.NotificationType.ACTION_BAR, () -> config.notificationType, (v) -> config.notificationType = v)
-                                        .controller(opt -> EnumControllerBuilder.<Config.NotificationType>create(opt).enumClass(Config.NotificationType.class))
-                                        .build())
-                                .build())
-                        .build())
-
-                // CATEGORY 2 — INDICATORS
-                .category(ConfigCategory.createBuilder()
-                        .name(Component.literal("Indicators"))
-                        .tooltip(Component.literal("Choose how wild Pokémon are visually highlighted."))
-
-                        .group(OptionGroup.createBuilder()
-                                .name(Component.literal("World Markers"))
-                                .description(OptionDescription.of(Component.literal(
-                                        "Visual effects rendered in the world on detected Pokémon.")))
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Outline (Glowing)"))
-                                        .binding(true, () -> config.enableGlowing, (v) -> config.enableGlowing = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Trace Ray"))
-                                        .binding(false, () -> config.enableTraceRay, (v) -> config.enableTraceRay = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Beacon Beam"))
-                                        .binding(false, () -> config.enableBeaconBeam, (v) -> config.enableBeaconBeam = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .build())
-                        .build())
-
-                // CATEGORY 3 — FILTERS
-                .category(ConfigCategory.createBuilder()
-                        .name(Component.literal("Filters"))
-                        .tooltip(Component.literal("Decide which Pokémon actually trigger a highlight."))
-
-                        .group(OptionGroup.createBuilder()
-                                .name(Component.literal("Rarity & Ownership"))
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Skip owned Pokémon"))
-                                        .binding(true, () -> config.ignoreOwned, (v) -> config.ignoreOwned = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Find Shinies"))
-                                        .binding(true, () -> config.highlightShinies, (v) -> config.highlightShinies = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Find Legendaries"))
-                                        .binding(true, () -> config.highlightLegendaries, (v) -> config.highlightLegendaries = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .build())
-
-                        .group(ListOption.<String>createBuilder()
-                                .name(Component.literal("Species Filter"))
-                                .description(OptionDescription.of(Component.literal(
-                                        "Only highlight these species. Leave empty to match every species.")))
-                                .binding(new ArrayList<>(), () -> config.specificSpecies, (v) -> config.specificSpecies = new ArrayList<>(v))
-                                .controller(opt -> DropdownStringControllerBuilder.create(opt).values(speciesValues).allowAnyValue(true))
-                                .initial("name")
-                                .build())
-                        .build())
-
-                // CATEGORY 4 — OVERLAY (HUD)
-                .category(ConfigCategory.createBuilder()
-                        .name(Component.literal("Overlay"))
-                        .tooltip(Component.literal("Heads-up display shown over detected Pokémon."))
-
-                        .group(OptionGroup.createBuilder()
-                                .name(Component.literal("Display Info"))
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Show Pokemon Info"))
-                                        .binding(true, () -> config.showOverworldInfo, (v) -> config.showOverworldInfo = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Show IVs"))
-                                        .binding(true, () -> config.showIVs, (v) -> config.showIVs = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .option(Option.<Boolean>createBuilder()
-                                        .name(Component.literal("Show Catch Rate"))
-                                        .binding(true, () -> config.showCatchRate, (v) -> config.showCatchRate = v)
-                                        .controller(opt -> BooleanControllerBuilder.create(opt).yesNoFormatter())
-                                        .build())
-                                .build())
-
-                        .group(OptionGroup.createBuilder()
-                                .name(Component.literal("Position"))
-                                .description(OptionDescription.of(Component.literal(
-                                        "Pixel offset of the overlay from the top-left corner of the screen.")))
-                                .option(Option.<Integer>createBuilder()
-                                        .name(Component.literal("Overlay X Position"))
-                                        .binding(10, () -> config.overlayX, (v) -> config.overlayX = v)
-                                        .controller(opt -> IntegerFieldControllerBuilder.create(opt).min(0).max(2000))
-                                        .build())
-                                .option(Option.<Integer>createBuilder()
-                                        .name(Component.literal("Overlay Y Position"))
-                                        .binding(10, () -> config.overlayY, (v) -> config.overlayY = v)
-                                        .controller(opt -> IntegerFieldControllerBuilder.create(opt).min(0).max(1000))
-                                        .build())
-                                .build())
-                        .build())
-
-                .save(ConfigManager::save)
-                .build()
-                .generateScreen(parent);
+        return new NativeConfigScreen(parent, getSpeciesValues());
     }
 
     private List<String> getSpeciesValues() {
@@ -166,12 +29,229 @@ public class ConfigScreen {
 
         try {
             TreeSet<String> sorted = new TreeSet<>();
-            PokemonSpecies.INSTANCE.getImplemented().forEach((s) -> sorted.add(s.getName().toLowerCase()));
+            PokemonSpecies.INSTANCE.getImplemented().forEach(s -> sorted.add(s.getName().toLowerCase(Locale.ROOT)));
             cachedSpecies = new ArrayList<>(sorted);
             return cachedSpecies;
         } catch (Exception e) {
             e.printStackTrace();
             return Collections.emptyList();
+        }
+    }
+
+    private static final class NativeConfigScreen extends Screen {
+        private static final int ROW_H = 24;
+        private static final int START_Y = 34;
+        private static final int GAP = 18;
+
+        private final Screen parent;
+        private final Config config = ConfigManager.getConfig();
+        private final List<String> speciesValues;
+        private EditBox speciesBox;
+        private String speciesPrefix = "";
+        private int leftX;
+        private int leftControlX;
+        private int rightX;
+        private int rightControlX;
+        private int controlW;
+        private int speciesY;
+        private int selectedSpeciesY;
+
+        NativeConfigScreen(Screen parent, List<String> speciesValues) {
+            super(Component.literal("CobblemonUtils"));
+            this.parent = parent;
+            this.speciesValues = speciesValues;
+        }
+
+        @Override
+        protected void init() {
+            int margin = Math.max(24, this.width / 36);
+            int columnW = Math.max(260, (this.width - margin * 2 - GAP) / 2);
+            int labelW = Math.min(150, columnW / 2);
+            controlW = Math.max(96, Math.min(180, columnW - labelW - 12));
+            leftX = margin;
+            leftControlX = leftX + labelW + 12;
+            rightX = leftX + columnW + GAP;
+            if (rightX + columnW > this.width - margin) rightX = leftX;
+            rightControlX = rightX + labelW + 12;
+
+            int y = START_Y;
+            addBool(leftControlX, "Enable PokeFinder", "Master switch. Disable mod without losing settings.", y, () -> config.enablePokeFinder, v -> config.enablePokeFinder = v); y += ROW_H;
+            addBool(leftControlX, "Enable Notifications", "Show notifications for matching Pokémon.", y, () -> config.enableNotifications, v -> config.enableNotifications = v); y += ROW_H;
+            addEnum(leftControlX, "Notification Style", "Where notifications appear.", y); y += ROW_H + 6;
+
+            addBool(leftControlX, "Outline (Glowing)", "Glow around matching Pokémon.", y, () -> config.enableGlowing, v -> config.enableGlowing = v); y += ROW_H;
+            addBool(leftControlX, "Trace Ray", "Line from player to matching Pokémon.", y, () -> config.enableTraceRay, v -> config.enableTraceRay = v); y += ROW_H;
+            addBool(leftControlX, "Beacon Beam", "Vertical beam over matching Pokémon.", y, () -> config.enableBeaconBeam, v -> config.enableBeaconBeam = v); y += ROW_H + 6;
+
+            addBool(leftControlX, "Skip Owned Pokémon", "Ignore species already owned.", y, () -> config.ignoreOwned, v -> config.ignoreOwned = v); y += ROW_H;
+            addBool(leftControlX, "Find Shinies", "Highlight shiny Pokémon.", y, () -> config.highlightShinies, v -> config.highlightShinies = v); y += ROW_H;
+            addBool(leftControlX, "Find Legendaries", "Highlight legendary Pokémon.", y, () -> config.highlightLegendaries, v -> config.highlightLegendaries = v); y += ROW_H + 6;
+
+            addBool(leftControlX, "Show Pokemon Info", "Show overlay info for matching Pokémon.", y, () -> config.showOverworldInfo, v -> config.showOverworldInfo = v); y += ROW_H;
+            addBool(leftControlX, "Show IVs", "Show IV values in overlay.", y, () -> config.showIVs, v -> config.showIVs = v); y += ROW_H;
+            addBool(leftControlX, "Show Catch Rate", "Show catch chance in overlay.", y, () -> config.showCatchRate, v -> config.showCatchRate = v); y += ROW_H;
+            addInt(leftControlX, "Overlay X Position", "Overlay X offset from left.", y, () -> config.overlayX, v -> config.overlayX = v, 0, 2000); y += ROW_H;
+            addInt(leftControlX, "Overlay Y Position", "Overlay Y offset from top.", y, () -> config.overlayY, v -> config.overlayY = v, 0, 1000);
+
+            addSpecies(START_Y);
+            addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(this.width - 84, this.height - 28, 60, 20).build());
+        }
+
+        private void addBool(int x, String label, String tooltip, int y, Supplier<Boolean> get, Consumer<Boolean> set) {
+            Button button = Button.builder(Component.literal(get.get() ? "On" : "Off"), b -> {
+                set.accept(!get.get());
+                b.setMessage(Component.literal(get.get() ? "On" : "Off"));
+            }).bounds(x, y, controlW, 20).build();
+            button.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            addRenderableWidget(button);
+        }
+
+        private void addEnum(int x, String label, String tooltip, int y) {
+            Button button = Button.builder(Component.literal(config.notificationType.name()), b -> {
+                Config.NotificationType[] values = Config.NotificationType.values();
+                config.notificationType = values[(config.notificationType.ordinal() + 1) % values.length];
+                b.setMessage(Component.literal(config.notificationType.name()));
+            }).bounds(x, y, controlW, 20).build();
+            button.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            addRenderableWidget(button);
+        }
+
+        private void addInt(int x, String label, String tooltip, int y, Supplier<Integer> get, Consumer<Integer> set, int min, int max) {
+            EditBox box = new EditBox(this.font, x, y, controlW, 20, Component.literal(label));
+            box.setValue(String.valueOf(get.get()));
+            box.setResponder(s -> {
+                try {
+                    set.accept(Math.max(min, Math.min(max, Integer.parseInt(s))));
+                } catch (NumberFormatException ignored) {
+                }
+            });
+            box.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            addRenderableWidget(box);
+        }
+
+        private void addSpecies(int y) {
+            speciesY = y;
+            int addW = 45;
+            int removeW = 20;
+            int fieldW = Math.max(96, controlW - addW - 6);
+            speciesBox = new EditBox(this.font, rightControlX, y, fieldW, 20, Component.literal("Species Filter"));
+            speciesBox.setValue(speciesPrefix);
+            speciesBox.setResponder(s -> speciesPrefix = s.toLowerCase(Locale.ROOT));
+            speciesBox.setTooltip(Tooltip.create(Component.literal("Only highlight these species. Empty list matches every species. Press Tab to autocomplete.")));
+            addRenderableWidget(speciesBox);
+
+            Button add = Button.builder(Component.literal("Add"), b -> addSpeciesValue()).bounds(rightControlX + fieldW + 6, y, addW, 20).build();
+            add.setTooltip(Tooltip.create(Component.literal("Add typed species to filter.")));
+            addRenderableWidget(add);
+
+            int shown = 0;
+            for (String species : speciesValues) {
+                if (speciesPrefix.isEmpty() || !species.startsWith(speciesPrefix) || config.specificSpecies.contains(species)) continue;
+                Button suggestion = Button.builder(Component.literal(species), b -> addSpeciesValue(species)).bounds(rightControlX, y + ROW_H * (shown + 1), controlW, 20).build();
+                suggestion.setTooltip(Tooltip.create(Component.literal("Add " + species + " to filter.")));
+                addRenderableWidget(suggestion);
+                if (++shown == 5) break;
+            }
+
+            selectedSpeciesY = y + ROW_H * (shown + 2);
+            int maxRows = Math.max(1, (this.height - selectedSpeciesY - 70) / ROW_H);
+            for (int i = 0; i < Math.min(maxRows, config.specificSpecies.size()); i++) {
+                final int index = i;
+                int rowY = selectedSpeciesY + ROW_H * i;
+                Button item = Button.builder(Component.literal(config.specificSpecies.get(i)), b -> {}).bounds(rightControlX, rowY, controlW - removeW - 6, 20).build();
+                item.setTooltip(Tooltip.create(Component.literal(config.specificSpecies.get(i))));
+                addRenderableWidget(item);
+
+                Button remove = Button.builder(Component.literal("×"), b -> {
+                    if (index < config.specificSpecies.size()) {
+                        config.specificSpecies.remove(index);
+                        refreshWidgets();
+                    }
+                }).bounds(rightControlX + controlW - removeW, rowY, removeW, 20).build();
+                remove.setTooltip(Tooltip.create(Component.literal("Remove species from filter.")));
+                addRenderableWidget(remove);
+            }
+        }
+
+        private void addSpeciesValue() {
+            addSpeciesValue(speciesBox.getValue().trim().toLowerCase(Locale.ROOT));
+        }
+
+        private void addSpeciesValue(String value) {
+            if (value.isEmpty()) return;
+            if (!config.specificSpecies.contains(value)) config.specificSpecies.add(value);
+            speciesPrefix = "";
+            refreshWidgets();
+        }
+
+        private void refreshWidgets() {
+            clearWidgets();
+            init();
+        }
+
+        private void refreshSpeciesBox() {
+            refreshWidgets();
+            if (speciesBox != null) speciesBox.setFocused(true);
+        }
+
+        @Override
+        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+            boolean speciesFocused = speciesBox != null && speciesBox.isFocused();
+            if (speciesFocused && keyCode == InputConstants.KEY_TAB) {
+                String match = firstSpeciesMatch();
+                if (match != null) speciesPrefix = match;
+                refreshSpeciesBox();
+                return true;
+            }
+            if (speciesFocused && keyCode == InputConstants.KEY_RETURN) {
+                addSpeciesValue();
+                return true;
+            }
+            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+            if (speciesFocused && handled) refreshSpeciesBox();
+            return handled;
+        }
+
+        @Override
+        public boolean charTyped(char codePoint, int modifiers) {
+            boolean speciesFocused = speciesBox != null && speciesBox.isFocused();
+            boolean handled = super.charTyped(codePoint, modifiers);
+            if (speciesFocused && handled) refreshSpeciesBox();
+            return handled;
+        }
+
+        private String firstSpeciesMatch() {
+            if (speciesPrefix.isEmpty()) return null;
+            for (String species : speciesValues) if (species.startsWith(speciesPrefix)) return species;
+            return null;
+        }
+
+        @Override
+        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics);
+            super.render(graphics, mouseX, mouseY, partialTick);
+            graphics.drawString(this.font, this.title, leftX, 12, 0xFFFFFF, false);
+            drawLabels(graphics, leftX, START_Y, new String[] {
+                    "Enable PokeFinder", "Enable Notifications", "Notification Style", "Outline (Glowing)", "Trace Ray", "Beacon Beam",
+                    "Skip Owned Pokémon", "Find Shinies", "Find Legendaries", "Show Pokemon Info", "Show IVs", "Show Catch Rate",
+                    "Overlay X Position", "Overlay Y Position"
+            });
+            graphics.drawString(this.font, "Species Filter", rightX, speciesY + 6, 0xE0E0E0, false);
+            graphics.drawString(this.font, "Selected Species", rightX, selectedSpeciesY + 6, 0xE0E0E0, false);
+        }
+
+        private void drawLabels(GuiGraphics graphics, int x, int y, String[] labels) {
+            for (String label : labels) {
+                graphics.drawString(this.font, label, x, y + 6, 0xE0E0E0, false);
+                y += ROW_H;
+                if (label.equals("Notification Style") || label.equals("Beacon Beam") || label.equals("Find Legendaries")) y += 6;
+            }
+        }
+
+        @Override
+        public void onClose() {
+            ConfigManager.save();
+            this.minecraft.setScreen(parent);
         }
     }
 }

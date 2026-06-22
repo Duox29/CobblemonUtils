@@ -144,7 +144,6 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation fg.deobf("curse.maven:cobblemon-687131:5375390")
-    implementation fg.deobf("curse.maven:yacl-667299:6336646")
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
     implementation fg.deobf("dev.architectury:architectury-forge:9.2.14")
     implementation "thedarkcolour:kotlinforforge:4.11.0"

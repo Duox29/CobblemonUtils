@@ -26,8 +26,8 @@ public class Config {
     public boolean showIVs = true;
     public boolean showTypes = true;
     public boolean showCatchRate = true;
-    public int overlayX = 100;
-    public int overlayY = 10;
+    public int overlayX = 670;
+    public int overlayY = 100;
 
     public enum NotificationType {
         CHAT,
