@@ -36,8 +36,11 @@ public class PokeFinderRenderer {
         Matrix4f matrix = poseStack.last().pose();
         VertexConsumer lineBuilder = client.renderBuffers().bufferSource().getBuffer(RenderType.lines());
 
+        Vec3 playerPos = client.player.getEyePosition(event.getPartialTick());
+
         for (Entity entity : client.level.entitiesForRendering()) {
             if (entity instanceof PokemonEntity pokemonEntity) {
+                if (entity.distanceToSqr(playerPos.x, playerPos.y, playerPos.z) > 4096) continue;
                 int color = PokeFinderFilter.getHighlightColor(pokemonEntity);
                 if (color != 0) {
                     float r = ((color >> 16) & 0xFF) / 255f;

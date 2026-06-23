@@ -25,7 +25,6 @@ public abstract class EntityMixin {
                 int color = PokeFinderFilter.getHighlightColor(pokemonEntity);
                 if (color != 0) {
                     cir.setReturnValue(true);
-                    return;
                 }
             }
         }

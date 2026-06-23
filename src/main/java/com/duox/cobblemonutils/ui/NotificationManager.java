@@ -13,12 +13,13 @@ import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
 public class NotificationManager {
-    private static final Set<UUID> notifiedEntities = new HashSet<>();
+    private static final int MAX_NOTIFIED_ENTITIES = 1000;
+    private static final Set<UUID> notifiedEntities = new LinkedHashSet<>();
 
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
@@ -46,6 +47,9 @@ public class NotificationManager {
 
         String reason = PokeFinderFilter.getMatchReason(pokemon, config);
         if (reason != null) {
+            if (notifiedEntities.size() >= MAX_NOTIFIED_ENTITIES) {
+                notifiedEntities.remove(notifiedEntities.iterator().next());
+            }
             notifiedEntities.add(uuid);
             sendNotification(entity, pokemon, reason, config.notificationType);
         }

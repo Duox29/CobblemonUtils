@@ -26,8 +26,10 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class OverlayRenderer {
     private static Pokemon currentTarget = null;
@@ -36,6 +38,15 @@ public class OverlayRenderer {
     private static final int COLOR_BORDER = 0x55FFFFFF;
     private static final int COLOR_TEXT_TITLE = 0xFFFFFF;
     private static final int COLOR_TEXT_SUB = 0xAAAAAA;
+
+    // Cache for findWildPokemonEntity: avoid re-scanning every tick when battle unchanged
+    private static Pokemon cachedBattlePokemon = null;
+    private static java.util.UUID cachedBattleId = null;
+
+    // Cache for type weakness: avoid recomputing every frame when target unchanged
+    private static Pokemon cachedWeaknessTarget = null;
+    private static List<TypeInfo> cachedW4x = List.of();
+    private static List<TypeInfo> cachedW2x = List.of();
 
     // --- TYPE CHART DATA ---
     private record TypeInfo(String name, String shortName, int color, ResourceLocation icon) {}
@@ -60,6 +71,16 @@ public class OverlayRenderer {
             new TypeInfo("DARK", "DAR", 0x555555, ResourceLocation.fromNamespaceAndPath("cobblemonutils", "textures/gui/types/dark.png")),
             new TypeInfo("FAIRY", "FAI", 0xFF55FF, ResourceLocation.fromNamespaceAndPath("cobblemonutils", "textures/gui/types/fairy.png"))
     };
+
+    private static final Map<String, Integer> TYPE_ID_MAP = buildTypeIdMap();
+
+    private static Map<String, Integer> buildTypeIdMap() {
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 0; i < TYPE_DATA.length; i++) {
+            map.put(TYPE_DATA[i].name(), i);
+        }
+        return Map.copyOf(map);
+    }
 
     private static final double[][] TYPE_CHART = {
             {1,1,1,1,1,0.5,1,0,0.5,1,1,1,1,1,1,1,1,1}, // NORMAL
@@ -112,24 +133,38 @@ public class OverlayRenderer {
         int padding = 8;
         int width = 170;
 
-        List<TypeInfo> w4x = new ArrayList<>();
-        List<TypeInfo> w2x = new ArrayList<>();
+        List<TypeInfo> w4x;
+        List<TypeInfo> w2x;
 
         if (config.showTypes) {
-            ElementalType type1 = currentTarget.getPrimaryType();
-            ElementalType type2 = currentTarget.getSecondaryType();
-            int id1 = getTypeId(type1.getName().toUpperCase(Locale.ROOT));
-            int id2 = (type2 != null) ? getTypeId(type2.getName().toUpperCase(Locale.ROOT)) : -1;
+            if (currentTarget == cachedWeaknessTarget) {
+                w4x = cachedW4x;
+                w2x = cachedW2x;
+            } else {
+                cachedWeaknessTarget = currentTarget;
+                cachedW4x = new ArrayList<>();
+                cachedW2x = new ArrayList<>();
+                w4x = cachedW4x;
+                w2x = cachedW2x;
 
-            if (id1 != -1) {
-                for (int i = 0; i < 18; i++) {
-                    double dmg = TYPE_CHART[i][id1];
-                    if (id2 != -1) dmg *= TYPE_CHART[i][id2];
+                ElementalType type1 = currentTarget.getPrimaryType();
+                ElementalType type2 = currentTarget.getSecondaryType();
+                int id1 = getTypeId(type1.getName().toUpperCase(Locale.ROOT));
+                int id2 = (type2 != null) ? getTypeId(type2.getName().toUpperCase(Locale.ROOT)) : -1;
 
-                    if (dmg == 4.0) w4x.add(TYPE_DATA[i]);
-                    else if (dmg == 2.0) w2x.add(TYPE_DATA[i]);
+                if (id1 != -1) {
+                    for (int i = 0; i < 18; i++) {
+                        double dmg = TYPE_CHART[i][id1];
+                        if (id2 != -1) dmg *= TYPE_CHART[i][id2];
+
+                        if (dmg == 4.0) cachedW4x.add(TYPE_DATA[i]);
+                        else if (dmg == 2.0) cachedW2x.add(TYPE_DATA[i]);
+                    }
                 }
             }
+        } else {
+            w4x = List.of();
+            w2x = List.of();
         }
 
         int height = padding * 2 + 12; // Header
@@ -180,9 +215,9 @@ public class OverlayRenderer {
         int level = target.getLevel();
         boolean shiny = target.getShiny();
 
-        String genderStr = target.getGender().toString();
-        String genderIcon = genderStr.equalsIgnoreCase("MALE") ? "♂" : (genderStr.equalsIgnoreCase("FEMALE") ? "♀" : "⚥");
-        int genderColor = genderStr.equalsIgnoreCase("MALE") ? 0x55AAFF : (genderStr.equalsIgnoreCase("FEMALE") ? 0xFF55AA : 0xAAAAAA);
+        var gender = target.getGender();
+        String genderIcon = switch (gender) { case MALE -> "♂"; case FEMALE -> "♀"; default -> "⚥"; };
+        int genderColor = switch (gender) { case MALE -> 0x55AAFF; case FEMALE -> 0xFF55AA; default -> 0xAAAAAA; };
 
         String prefix = shiny ? "✨ " : "";
         int nameColor = shiny ? 0xFFD700 : COLOR_TEXT_TITLE;
@@ -275,10 +310,7 @@ public class OverlayRenderer {
         return weakY + 2;
     }
     private static int getTypeId(String name) {
-        for (int i = 0; i < TYPE_DATA.length; i++) {
-            if (TYPE_DATA[i].name().equals(name)) return i;
-        }
-        return -1;
+        return TYPE_ID_MAP.getOrDefault(name, -1);
     }
 
     private static int drawStatsGrid(GuiGraphics g, Font font, String title, int hp, int atk, int def, int spa, int spd, int spe, int x, int y, int width) {
@@ -377,14 +409,25 @@ public class OverlayRenderer {
     private static Pokemon findWildPokemonEntity(Minecraft client, ClientBattle battle) {
         if (battle == null || client.level == null) return null;
 
+        java.util.UUID currentBattleId = battle.getBattleId();
+
+        if (cachedBattlePokemon != null && currentBattleId.equals(cachedBattleId)) {
+            return cachedBattlePokemon;
+        }
+
         for (Entity e : client.level.entitiesForRendering()) {
             if (e instanceof PokemonEntity pe) {
                 Pokemon pokemon = pe.getPokemon();
-                if (pe.getBattleId() != null && pe.getBattleId().equals(battle.getBattleId()) && !pokemon.isPlayerOwned()) {
+                if (pe.getBattleId() != null && pe.getBattleId().equals(currentBattleId) && !pokemon.isPlayerOwned()) {
+                    cachedBattleId = currentBattleId;
+                    cachedBattlePokemon = pokemon;
                     return pokemon;
                 }
             }
         }
+
+        cachedBattleId = currentBattleId;
+        cachedBattlePokemon = null;
         return null;
     }
 }

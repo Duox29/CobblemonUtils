@@ -149,9 +149,10 @@ public class ConfigScreen {
             add.setTooltip(Tooltip.create(Component.literal("Add typed species to filter.")));
             addRenderableWidget(add);
 
+            java.util.Set<String> speciesSet = new java.util.HashSet<>(config.specificSpecies);
             int shown = 0;
             for (String species : speciesValues) {
-                if (speciesPrefix.isEmpty() || !species.startsWith(speciesPrefix) || config.specificSpecies.contains(species)) continue;
+                if (speciesPrefix.isEmpty() || !species.startsWith(speciesPrefix) || speciesSet.contains(species)) continue;
                 Button suggestion = Button.builder(Component.literal(species), b -> addSpeciesValue(species)).bounds(rightControlX, y + ROW_H * (shown + 1), controlW, 20).build();
                 suggestion.setTooltip(Tooltip.create(Component.literal("Add " + species + " to filter.")));
                 addRenderableWidget(suggestion);

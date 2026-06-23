@@ -59,9 +59,6 @@ public class ConfigManager {
     }
 
     public static Config getConfig() {
-        if (config == null) {
-            load();
-        }
         return config;
     }
 }
