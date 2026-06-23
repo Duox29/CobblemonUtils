@@ -47,7 +47,9 @@ public class PokeFinderRenderer {
                     Vec3 entityPos = entity.getPosition(event.getPartialTick());
 
                     if (config.enableTraceRay) {
-                        Vec3 startPos = event.getCamera().getPosition().add(0, -0.1, 0);
+                        Vec3 eyePos = client.player.getEyePosition(event.getPartialTick());
+                        Vec3 lookVec = client.player.getLookAngle();
+                        Vec3 startPos = eyePos.add(lookVec.scale(2.0));
                         lineBuilder.vertex(matrix, (float) startPos.x, (float) startPos.y, (float) startPos.z)
                                 .color(r, g, b, 1.0f).normal(0, 1, 0).endVertex();
 
